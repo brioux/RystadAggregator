@@ -1,0 +1,7 @@
+gdx>=3
+gdxcc>=7.post2492
+gdxpy>=0.1.3
+numpy>=1.17.2
+pandas>=0.25.1
+xarray>=0.13.0
+gdxpds>=1.1.0
