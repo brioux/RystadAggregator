@@ -39,7 +39,7 @@ def appendRows(output, df, years, i, group):
 
     # Adding approval_year for new assets
     if 'New' in group:
-        approval.append({'Asset': assetStr, 'Value': float(group[-4:])}, ignore_index=True)
+        approval = approval.append({'Asset': assetStr, 'Value': float(group[-4:])}, ignore_index=True)
 
     return output.append(rows)
 
