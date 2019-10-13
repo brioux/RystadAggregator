@@ -50,7 +50,7 @@ def costAggregator(output, costRange, costs, group='Other'):
     # costs: 	 filterd cost table to aggregate. e.g. existing assets conventional...
     # group: 	 asset group name (defaults to other).
 
-    yearRange = slice(119, 200)  # take price data from year 2019 onluy
+    yearRange = slice(119, 200)  # take price data from year 2019 only
     costs = costs.iloc[:, yearRange]
     rows = costs.index.values  # row index values (asset info)
     cols = costs.columns  # row column values (years)
@@ -58,12 +58,11 @@ def costAggregator(output, costRange, costs, group='Other'):
 
     global production, annualCapex
 
-    #	use production as weights
+    # use production as weights
     weights = production.loc[rows, cols]
-    # 	Adjust costs to account for price markers
+    # Adjust costs to account for price markers
     costs = costs.divide(RM.loc[rows, cols])
 
-    assetGroup = []
     assetsToDrop = []
     for i in range(len(costRange)):
         if i == len(costRange) - 1:
@@ -94,7 +93,7 @@ def costAggregator(output, costRange, costs, group='Other'):
             assetsToDrop += list(set().union(assetGroup, assetsToDrop))
 
     production = production.drop(assetsToDrop)
-    # annualCapex = annualCapex.drop(assetsToDrop)
+    annualCapex = annualCapex.drop(assetsToDrop)
     return output.drop(assetsToDrop)
 
 
@@ -151,6 +150,8 @@ OPEX.index.names = ['asset', 'c', 'type', 'group']
 OPEX.columns.names = ['time']
 production.index.names = ['asset', 'c', 'type', 'group']
 production.columns.names = ['time']
+annualCapex.index.names = ['asset', 'c', 'type', 'group']
+annualCapex.columns.names = ['time']
 
 max_production_GDX = production.max(axis=1).to_frame()
 max_production_GDX.columns = ['Value']
@@ -162,12 +163,13 @@ OPEX_GDX = OPEX_GDX.reset_index()
 prod_GDX = production.stack().to_frame()
 prod_GDX.columns = ['Value']
 prod_GDX = prod_GDX.reset_index()
+annualCapex_GDX = annualCapex.stack().to_frame()
+annualCapex_GDX.columns = ['Value']
+annualCapex_GDX = annualCapex_GDX.reset_index()
 
 data_ready_for_GAMS = {'asset': asset, 'country': country, 'group': group, 'type': assetType,
                        'approval': approval, 'start': start_y, 'last_year': last_y,
                         'max_production': max_production_GDX, 'CAPEX_total': CAPEX_total, 'breakeven': breakEven,
-                       'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX
-                        # , 'CAPEX_annual': annualCapex
-                        }
+                       'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX, 'CAPEX_annual': annualCapex_GDX}
 gdx = gdxpds.to_gdx(data_ready_for_GAMS, path='data_to_send_to_gams.gdx')
 production.to_excel('test.xlsx')
