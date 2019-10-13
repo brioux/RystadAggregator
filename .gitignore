@@ -1,3 +1,5 @@
 *.gdx
 *.panda
 /__pycache__
+.idea/*
+*.xlsx
