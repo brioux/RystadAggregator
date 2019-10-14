@@ -82,18 +82,34 @@ def costAggregator(output, costRange, costs, group='Other'):
             output = appendRows(output, tmp, years, i, group)
 
             # aggregate production
-            tmp = production.loc[assetGroup, cols].sum(axis=0)
-            production = appendRows(production, tmp, years, i, group)
+            try:
+                tmp = production.loc[assetGroup, cols].sum(axis=0)
+                production = appendRows(production, tmp, years, i, group)
+            except KeyError as e:
+                print(e, 'In production computation')
+                pass
 
             # aggregate annual capex
-            tmp = annualCapex.loc[assetGroup, cols].sum(axis=0)
-            annualCapex = appendRows(annualCapex, tmp, years, i, group)
+            try:
+                tmp = annualCapex.loc[assetGroup, cols].sum(axis=0)
+                annualCapex = appendRows(annualCapex, tmp, years, i, group)
+            except KeyError as e:
+                print(e, 'In CAPEX computation')
+                pass
 
             # assets to drop from global list
             assetsToDrop += list(set().union(assetGroup, assetsToDrop))
 
-    production = production.drop(assetsToDrop)
-    annualCapex = annualCapex.drop(assetsToDrop)
+    try:
+        production = production.drop(assetsToDrop)
+    except KeyError as e:
+        print(e, 'In dropping production assets.')
+        pass
+    try:
+        annualCapex = annualCapex.drop(assetsToDrop)
+    except KeyError as e:
+        print(e, 'In dropping CAPEX data.')
+        pass
     return output.drop(assetsToDrop)
 
 
@@ -112,7 +128,7 @@ existingAssets = approval.loc[approval["Value"] < 2019]['Asset'].values
 
 # cost bins to iterate over
 costRange = [0, 10, 30, 40, 50]
-costRange += np.arange(51, 120, 1).tolist()
+costRange += np.arange(51, 120, 0.1).tolist()
 # Adding the maximum mean to the list
 costRange.append(OPEX.divide(RM).mean(axis=1).max())
 
@@ -171,5 +187,6 @@ data_ready_for_GAMS = {'asset': asset, 'country': country, 'group': group, 'type
                        'approval': approval, 'start': start_y, 'last_year': last_y,
                         'max_production': max_production_GDX, 'CAPEX_total': CAPEX_total, 'breakeven': breakEven,
                        'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX, 'CAPEX_annual': annualCapex_GDX}
-gdx = gdxpds.to_gdx(data_ready_for_GAMS, path='data_to_send_to_gams.gdx')
+gdx = gdxpds.to_gdx(data_ready_for_GAMS, path='results.gdx')
+print('Results are saved to: results.gdx')
 production.to_excel('test.xlsx')
