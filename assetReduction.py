@@ -128,15 +128,14 @@ existingAssets = approval.loc[approval["Value"] < 2019]['Asset'].values
 
 # cost bins to iterate over
 costRange = [0, 10, 30, 40, 50]
-costRange += np.arange(51, 120, 0.1).tolist()
+costRange += np.arange(51, 120, 1).tolist()
 # Adding the maximum mean to the list
 costRange.append(OPEX.divide(RM).mean(axis=1).max())
 
 # drop OPEC
 costs = OPEX.drop(index=countriesOPEC, level=1)
 # drop tight oil
-costs = costs.drop(index=['Tight Oil'], level=3)
-costs = costs.drop(index=['Tight oil'], level=3)
+costs.drop(index=['Tight Oil', 'Tight oil'], level=3, inplace=True)
 
 # select costs for existing assets only
 tmp = costs.loc[existingAssets]
@@ -189,4 +188,3 @@ data_ready_for_GAMS = {'asset': asset, 'country': country, 'group': group, 'type
                        'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX, 'CAPEX_annual': annualCapex_GDX}
 gdx = gdxpds.to_gdx(data_ready_for_GAMS, path='results.gdx')
 print('Results are saved to: results.gdx')
-production.to_excel('test.xlsx')
