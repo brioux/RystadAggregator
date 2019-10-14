@@ -68,7 +68,7 @@ def costAggregator(output, costRange, costs, group='Other'):
         if i == len(costRange) - 1:
             break
 
-        tmp = costs[(costs.mean(axis=1) >= costRange[i]) & (costs.mean(axis=1) < costRange[i + 1])]
+        tmp = costs[(costs >= costRange[i]) & (costs < costRange[i + 1])]
         n = tmp.count()
         if n.any():
             print('aggregating ' + str(costRange[i]) + ' to ' + str(costRange[i + 1]))
@@ -83,7 +83,9 @@ def costAggregator(output, costRange, costs, group='Other'):
 
             # aggregate production
             try:
-                tmp = production.loc[assetGroup, cols].sum(axis=0)
+                # tmp = production.loc[assetGroup, cols].sum(axis=0)
+                tmp = production[(costs >= costRange[i]) & (costs < costRange[i + 1])].sum(axis=0)
+                tmp = tmp.iloc[yearRange]
                 production = appendRows(production, tmp, years, i, group)
             except KeyError as e:
                 print(e, 'In production computation')
@@ -91,7 +93,9 @@ def costAggregator(output, costRange, costs, group='Other'):
 
             # aggregate annual capex
             try:
-                tmp = annualCapex.loc[assetGroup, cols].sum(axis=0)
+                # tmp = annualCapex.loc[assetGroup, cols].sum(axis=0)
+                tmp = annualCapex[(costs >= costRange[i]) & (costs < costRange[i + 1])].sum(axis=0)
+                tmp = tmp.iloc[yearRange]
                 annualCapex = appendRows(annualCapex, tmp, years, i, group)
             except KeyError as e:
                 print(e, 'In CAPEX computation')
@@ -101,12 +105,12 @@ def costAggregator(output, costRange, costs, group='Other'):
             assetsToDrop += list(set().union(assetGroup, assetsToDrop))
 
     try:
-        production = production.drop(assetsToDrop)
+        production.drop(assetsToDrop, inplace=True)
     except KeyError as e:
         print(e, 'In dropping production assets.')
         pass
     try:
-        annualCapex = annualCapex.drop(assetsToDrop)
+        annualCapex.drop(assetsToDrop, inplace=True)
     except KeyError as e:
         print(e, 'In dropping CAPEX data.')
         pass
@@ -117,11 +121,6 @@ countriesOPEC = ['Saudi Arabia', 'Iran', 'Iraq', 'Kuwait', 'Qatar', 'UAE', 'Liby
                  'Algeria', 'Nigeria', 'Equatorial Guinea',
                  'Gabon', 'Congo', 'Angola', 'Ecuador',
                  'Venezuela']
-
-# OPEX['avg'] = wavg(_OPEX,_production,axis=1)
-# OPEX['std'] = wstd(_OPEX,_production,axis=1)
-# OPEX['max'] = _OPEX.max(axis=1)
-# OPEX['min'] = _OPEX.min(axis=1)
 
 # only projects approved before 2019
 existingAssets = approval.loc[approval["Value"] < 2019]['Asset'].values
