@@ -29,8 +29,8 @@ if __name__ == "__main__":
     last_y = tables['last_year']
     last_y.columns = ['Asset', 'Value']
 
-    breakEven = tables['breakeven']
-    breakEven.columns = ['Asset', 'Country', 'Type', 'Group', 'Value']
+    _breakEven = tables['breakeven']
+    _breakEven.columns = ['Asset', 'Country', 'Type', 'Group', 'Value']
     CAPEX_total = tables['CAPEX_total']
     CAPEX_total.columns = ['Asset', 'Country', 'Type', 'Group', 'Value']
     max_production = tables['max_production']
@@ -44,7 +44,9 @@ if __name__ == "__main__":
     _RM = regionalMarker['price_ratio']
     _RM.columns = ['Asset', 'Country', 'Type', 'Group', 'Year', 'Value']
 
+    
     # Modifying the structure of the dataFrame
+    breakEven = pd.pivot_table(_breakEven, values='Value', index=['Asset', 'Country', 'Type', 'Group'])
     OPEX = pd.pivot_table(_OPEX, values='Value', index=['Asset', 'Country', 'Type', 'Group'], columns='Year')
     annualCapex = pd.pivot_table(_annualCapex, values='Value', index=['Asset', 'Country', 'Type', 'Group'],
                                  columns='Year')
@@ -52,7 +54,7 @@ if __name__ == "__main__":
                                 columns='Year')
     RM = pd.pivot_table(_RM, values='Value', index=['Asset', 'Country', 'Type', 'Group'], columns='Year')
 
-    del _annualCapex, _OPEX, _production, _RM
+    del _annualCapex, _OPEX, _production, _RM, _breakEven
 
     with open('rystad.panda', 'wb') as f:
         pickle.dump([asset, country, group, assetType,
