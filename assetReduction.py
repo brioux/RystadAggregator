@@ -91,8 +91,7 @@ def costAggregator(costs):
             weights = production.loc[assetGroup][~tmp.isnull()]  
             # weighted average of assetGroup
             avg = wavg(tmp, weights)
-            OPEX = appendRows(OPEX, avg, years,group)
-
+            OPEX = appendRows(OPEX, avg, years,group)  
             # aggregate production
             try:
                 totals = weights.sum(axis=0)
@@ -101,7 +100,6 @@ def costAggregator(costs):
             except KeyError as e:
                 print(e, 'In production computation')
                 pass
-
             # aggregate annual capex
             try:
                 totals = annualCapex.loc[assetGroup][~tmp.isnull()].sum(axis=0)
@@ -109,8 +107,7 @@ def costAggregator(costs):
                 annualCapex = appendRows(annualCapex, totals, years, group )
             except KeyError as e:
                 print(e, 'In CAPEX computation')
-                pass
-
+                pass  
             # assets to drop from global list
             assetsToDrop += list(set().union(assetGroup, assetsToDrop))
             asset_index += 1
@@ -134,7 +131,7 @@ def aggregate(costs):
     asset_type="Existing"
     tmp = costs.loc[existingAssets]
     OPEX = costAggregator(tmp)
-    for year in np.arange(2019, 2050, 1).tolist():
+    for year in np.arange(2019, 2051, 1).tolist():
         asset_type="New"
         # only projects approved after 2019
         newAssets = approval.loc[approval["Value"] == year]['Asset'].values
@@ -146,24 +143,23 @@ def aggregate(costs):
 countriesOtherOPEC = ['Iran', 'Iraq', 'Kuwait', 'Qatar', 'UAE', 'Libya',
                  'Algeria', 'Nigeria', 'Equatorial Guinea',
                  'Gabon', 'Congo', 'Angola', 'Ecuador',
-                 'Venezuela','Saudi Arabia']
+                 'Venezuela']
 countriesOPEC = countriesOtherOPEC+['Saudi Arabia']
 
 
-yearRange = slice(119, 200)  # take price data from year 2019 only
+yearRange = slice(119, 200)  # take price data starting from year 2019
 production = production.iloc[:, yearRange].dropna(how='all')
 OPEX = OPEX.iloc[:, yearRange].dropna(how='all')
 annualCapex = annualCapex.iloc[:,yearRange].dropna(how='all')
 
 asset_index = 0;
 
-OPEX[OPEX.isnull()][production>0]=0
+OPEX[OPEX.isnull()][production>0]=0.0;
 
 # Set tight oil Costs to breakEven
 tmp = OPEX.query("Group == ['Tight Oil', 'Tight oil']")
 indeces = tmp.index.values
 for year in tmp.columns.values:
-
     OPEX.loc[indeces,year] = breakEven.loc[indeces].values
 costsAvg = wavg(OPEX,production,axis=1)
 costsStd = wstd(OPEX,production,axis=1)
@@ -194,14 +190,14 @@ costs = OPEX.drop(index=countriesOPEC, level=1)
 country = "Not OPEC"
 
 tmp = costs.drop(index=['Tight Oil', 'Tight oil'], level=3)
+group = 'Other'
 aggregate(tmp)
 
 tmp = costs.query("Group == ['Tight Oil', 'Tight oil']")
 group='Tight Oil'
 aggregate(tmp)
 
-
-asset_list, country_list, assetType_list, group_list = zip(*OPEX.index.to_list())
+asset_list, country_list, assetType_list, group_list = zip(*production.index.to_list())
 asset = pd.DataFrame({'Asset': list(set(asset_list)), 'Value': True})
 country = pd.DataFrame({'Asset': list(set(country_list)), 'Value': True})
 assetType = pd.DataFrame({'Asset': list(set(assetType_list)), 'Value': True})
