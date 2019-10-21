@@ -29,8 +29,6 @@ def appendRows(output, df, years, group):
     # years: 	years as column headings for pivot_table
     # i.        integer number to index new aggregate asst group
     # group 	identifier for AssetGroup (e.g. tight oil)
-    global approval
-    assetStr = "AggregateAsset_"+str(asset_index)
     
     n = len(years)
     df = pd.DataFrame(data={'Value': df.values,
@@ -38,25 +36,16 @@ def appendRows(output, df, years, group):
                             "Country": [country] * n, 'Type': ['All'] * n, 'Group': [group] * n, 'Year': years})
     rows = pd.pivot_table(df, values='Value', index=['Asset', 'Country', 'Type', 'Group'], columns='Year')
 
-    # Adding approval_year for new assets
-    if 'New' in asset_type:
-        approval = approval.append({'Asset': assetStr, 'Value': year}, ignore_index=True)
-
     return output.append(rows)
-
 
 def costAggregator(costs):
     # output: 	 panda DataFrame where the aggregate values are stored
     # costRange: cost bin ranges to aggregate over
     # costs: 	 filterd cost table to aggregate. e.g. existing assets conventional...
-    rows = costs.index.values  # row index values (asset info)
-    cols = costs.columns  # row column values (years)
+    
     print((" ").join(['aggregating assets for',str(country),str(group),str(asset_type),str(year)]))
 
-    global OPEX, production, annualCapex, asset_index
-
-    # Adjust costs to account for price markers
-    costs = costs.divide(RM.loc[rows, cols])
+    global OPEX, production, annualCapex, asset_index, assetStr, approval, start_y
     assetsToDrop = []
     for i in range(len(costRange)):
         if i == len(costRange) - 1:
@@ -65,8 +54,11 @@ def costAggregator(costs):
         if asset_type=="New" :
             # return annual costs table for assets Selected by annual weigted average average 
             # (only for new assets)
+            rows = costs.index.values  # row index values (asset info)
             tmp = costsAvg.loc[rows]
             tmp = tmp[(tmp >= costRange[i]) & (tmp < costRange[i + 1])].dropna(how='all')
+#            tmp = tmp[(tmp_min>0.67*costRange[i]) & (tmp >= costRange[i]) & (tmp_max<1.33*costRange[i + 1]) & (tmp < costRange[i + 1])].dropna(how='all')
+
         else :
             # mask costs table for any years within range 
             # (only for existing assets)
@@ -77,6 +69,7 @@ def costAggregator(costs):
        	    # list of current assets
             # note we use dropna(how='all') to remove empty rows, dropin assets not part of the current mask
        	    assetGroup = tmp.index.values
+            assetStr = "AggregateAsset_"+str(asset_index)
        	    if asset_type=="New" :
        	    	try:
        	    		tmp = costs.loc[assetGroup]
@@ -85,13 +78,18 @@ def costAggregator(costs):
        	    		pass
 
             # list of years
-            years = tmp.columns.values
+            try:
+                years = tmp.columns.values
+            except KeyError as e:
+                pass
             # set weights to production leves for all non-null costs
             # to prevent assinging weights to null values
             weights = production.loc[assetGroup][~tmp.isnull()]  
             # weighted average of assetGroup
             avg = wavg(tmp, weights)
-            OPEX = appendRows(OPEX, avg, years,group)  
+            OPEX = appendRows(OPEX, avg, years,group) 
+                # Adding approval_year for new assets
+ 
             # aggregate production
             try:
                 totals = weights.sum(axis=0)
@@ -100,6 +98,11 @@ def costAggregator(costs):
             except KeyError as e:
                 print(e, 'In production computation')
                 pass
+            
+            # set approval and start year
+            approval = approval.append({'Asset': assetStr, 'Value': int(year)}, ignore_index=True)
+            start_y = start_y.append({'Asset': assetStr, 'Value': int(totals[totals>0].dropna(how='all').index[0])}, ignore_index=True)
+            
             # aggregate annual capex
             try:
                 totals = annualCapex.loc[assetGroup][~tmp.isnull()].sum(axis=0)
@@ -112,28 +115,48 @@ def costAggregator(costs):
             assetsToDrop += list(set().union(assetGroup, assetsToDrop))
             asset_index += 1
 
-    try:   	
-        production.drop(assetsToDrop, inplace=True)
-    except KeyError as e:
-        print(e, 'In dropping production assets.')
-        pass
-    try:
-        annualCapex.drop(assetsToDrop, inplace=True)
-    except KeyError as e:
-        print(e, 'In dropping CAPEX data.')
-        pass
-    return OPEX.drop(assetsToDrop)
+    if len(assetsToDrop)>0:
+        try:  	
+            production.drop(assetsToDrop, inplace=True)
+        except KeyError as e:
+            print(e, 'In dropping production assets.')
+            pass
+        try:
+            annualCapex.drop(assetsToDrop, inplace=True)
+        except KeyError as e:
+            print(e, 'In dropping CAPEX data.')
+            pass
+        try:
+            OPEX.drop(assetsToDrop, inplace=True)
+        except KeyError as e:
+            print(e, 'In dropping OPEX data.')
+            pass
+        try:    
+            approval.drop(assetsToDrop, inplace=True)
+        except KeyError as e:
+            pass
+        try:    
+            start_y.drop(assetsToDrop, inplace=True)
+        except KeyError as e:
+            pass  
+    return OPEX
 
 def aggregate(costs):
     # sett costs aggregator for Existing and New assets
+    costs = costs.dropna(how='all')
     global OPEX, asset_type, year
     year = ""
     asset_type="Existing"
+    year = 2019
     tmp = costs.loc[existingAssets]
     OPEX = costAggregator(tmp)
-    for year in np.arange(2019, 2051, 1).tolist():
+    for year in np.arange(2020, 2051, 1).tolist():
         asset_type="New"
         # only projects approved after 2019
+        #if group=='Tight Oil':
+        #    # use start year for tight oil
+        #    newAssets = start_y.loc[start_y["Value"] == year]['Asset'].values 
+        #else :
         newAssets = approval.loc[approval["Value"] == year]['Asset'].values
         # select costs for new assets, except tight oil
         tmp = costs.loc[newAssets]
@@ -153,33 +176,42 @@ OPEX = OPEX.iloc[:, yearRange].dropna(how='all')
 annualCapex = annualCapex.iloc[:,yearRange].dropna(how='all')
 
 asset_index = 0;
-
-OPEX[OPEX.isnull()][production>0]=0.0;
+assetStr = '';
 
 # Set tight oil Costs to breakEven
 tmp = OPEX.query("Group == ['Tight Oil', 'Tight oil']")
 indeces = tmp.index.values
 for year in tmp.columns.values:
     OPEX.loc[indeces,year] = breakEven.loc[indeces].values
+
+rows = OPEX.index.values  # row index values (asset info)
+cols = OPEX.columns  # row column values (years)
+# Adjust costs to account for price markers
+OPEX = OPEX.divide(RM.loc[rows, cols])
 costsAvg = wavg(OPEX,production,axis=1)
 costsStd = wstd(OPEX,production,axis=1)
+costsMax = OPEX.max()
+costsMin = OPEX.min()
 #costsAvg = costsAvg[costsStd<1]
 
 # only projects approved before 2019
-existingAssets = approval.loc[approval["Value"] < 2019]['Asset'].values
+existingAssets = approval.loc[approval["Value"] <= 2019]['Asset'].values
 
 # cost bins to iterate over
-costRange = [0, 30, 40, 50]
-costRange += np.arange(51, 120, 1).tolist()
+costRange = [0, 30,40,45,55]
+costRange += np.arange(60, 120, 1).tolist()
+costRange += np.arange(120, 150, 5).tolist()
+costRange += np.arange(90, 120, 1).tolist()
+costRange += np.arange(110, 150, 1).tolist()
 # Adding the maximum mean to the list
-costRange.append(OPEX.divide(RM).mean(axis=1).max())
+costRange.append(OPEX.mean(axis=1).max())
 # select costs for existing assets only
 
 
 group='All'
 country = "Saudi Arabia"
 costs = OPEX.query('Country == "%s"' %country)
-#aggregate(costs)
+aggregate(costs)
 country = "Other OPEC"
 costs = OPEX.query('Country == @countriesOtherOPEC')
 aggregate(costs)
@@ -195,6 +227,13 @@ aggregate(tmp)
 
 tmp = costs.query("Group == ['Tight Oil', 'Tight oil']")
 group='Tight Oil'
+aggregate(tmp)
+
+
+#aggregate all OTHER orginal assets with blank OPEX
+group = 'ALL'
+tmp = production.drop(index=["Saudi Arabia","Other OPEC","Not OPEC"], level=1)
+tmp.loc[:,:] = 0
 aggregate(tmp)
 
 asset_list, country_list, assetType_list, group_list = zip(*production.index.to_list())
