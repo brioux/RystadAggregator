@@ -314,9 +314,9 @@ OPEX_GDX = OPEX_GDX.reset_index()
 prod_GDX = production.stack().to_frame()
 prod_GDX.columns = ['Value']
 prod_GDX = prod_GDX.reset_index()
-RM_GDX = RM.stack().to_frame()
-RM_GDX.columns = ['Value']
-RM_GDX = RM_GDX.reset_index()
+price_ratio = RM.stack().to_frame()
+price_ratio.columns = ['Value']
+price_ratio = price_ratio.reset_index()
 annualCapex_GDX = annualCapex.stack().to_frame()
 annualCapex_GDX.columns = ['Value']
 annualCapex_GDX = annualCapex_GDX.reset_index()
@@ -324,6 +324,6 @@ annualCapex_GDX = annualCapex_GDX.reset_index()
 data_ready_for_GAMS = {'asset': asset, 'country': country, 'group': group, 'type': assetType,
                        'approval': approval, 'start': start_y, 'last_year': last_y,
                         'max_production': max_production_GDX, 'CAPEX_total': CAPEX_total, 'breakeven': breakEven_GDX,
-                       'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX, 'CAPEX_annual': annualCapex_GDX, 'RM': RM_GDX}
+                       'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX, 'CAPEX_annual': annualCapex_GDX, 'price_ratio': price_ratio}
 gdx = gdxpds.to_gdx(data_ready_for_GAMS, path='results.gdx')
 print('Results are saved to: results.gdx')
