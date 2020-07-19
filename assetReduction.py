@@ -293,6 +293,7 @@ assetType = pd.DataFrame({'Asset': list(set(assetType_list)), 'Value': True})
 group = pd.DataFrame({'Asset': list(set(group_list)), 'Value': True})
 
 breakEven.index.names = ['asset', 'c', 'type', 'group']
+breakEven.columns.names = ['time']
 OPEX.index.names = ['asset', 'c', 'type', 'group']
 OPEX.columns.names = ['time']
 production.index.names = ['asset', 'c', 'type', 'group']
