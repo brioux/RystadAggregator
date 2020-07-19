@@ -46,7 +46,7 @@ def costAggregator(costs):
     
     print((" ").join(['aggregating assets for',str(country),str(group),str(asset_type),str(year)]))
 
-    global OPEX, production, annualCapex, asset_index, assetStr, approval, start_y
+    global OPEX, RM, production, annualCapex, asset_index, assetStr, approval, start_y
     assetsToDrop = []
     for i in range(len(costRange)):
         if i == len(costRange) - 1:
@@ -89,13 +89,21 @@ def costAggregator(costs):
 
             index = production.index.get_level_values(0).intersection(assetGroupIndex)
             # set weights to production leves for all non-null costs
-            # to prevent assinging weights to null values
+            # to prevent assigning weights to null values
             weights = production.loc[index][~tmp.isnull()]  
+            
             # weighted average of assetGroup
             avg = wavg(tmp, weights)
             OPEX = appendRows(OPEX, avg, years,group) 
                 # Adding approval_year for new assets
- 
+             
+            # weighted average of the quality index marker
+            index = RM.index.get_level_values(0).intersection(assetGroupIndex)
+            tmp = RM.loc[index][~tmp.isnull()]  
+            avg = wavg(tmp, weights)
+            RM = appendRows(RM, avg, years,group) 
+                # Adding approval_year for new assets                
+                
             # aggregate production
             try:
                 totals = weights.sum(axis=0)
@@ -152,6 +160,11 @@ def costAggregator(costs):
             OPEX.drop(assetsToDrop, inplace=True, errors='ignore' )
         except KeyError as e:
             print(e, 'In dropping OPEX data.')
+            pass
+         try:
+            RM.drop(assetsToDrop, inplace=True, errors='ignore' )
+        except KeyError as e:
+            print(e, 'In dropping RM data.')
             pass
         try:    
             approval.drop(assetsToDrop, inplace=True, errors='ignore' )
@@ -286,6 +299,8 @@ production.index.names = ['asset', 'c', 'type', 'group']
 production.columns.names = ['time']
 annualCapex.index.names = ['asset', 'c', 'type', 'group']
 annualCapex.columns.names = ['time']
+RM.index.names = ['asset', 'c', 'type', 'group']
+annualCapex.columns.names = ['time']
 
 max_production_GDX = production.max(axis=1).to_frame()
 max_production_GDX.columns = ['Value']
@@ -299,6 +314,9 @@ OPEX_GDX = OPEX_GDX.reset_index()
 prod_GDX = production.stack().to_frame()
 prod_GDX.columns = ['Value']
 prod_GDX = prod_GDX.reset_index()
+RM_GDX = RM.stack().to_frame()
+RM_GDX.columns = ['Value']
+RM_GDX = RM_GDX.reset_index()
 annualCapex_GDX = annualCapex.stack().to_frame()
 annualCapex_GDX.columns = ['Value']
 annualCapex_GDX = annualCapex_GDX.reset_index()
@@ -306,6 +324,6 @@ annualCapex_GDX = annualCapex_GDX.reset_index()
 data_ready_for_GAMS = {'asset': asset, 'country': country, 'group': group, 'type': assetType,
                        'approval': approval, 'start': start_y, 'last_year': last_y,
                         'max_production': max_production_GDX, 'CAPEX_total': CAPEX_total, 'breakeven': breakEven_GDX,
-                       'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX, 'CAPEX_annual': annualCapex_GDX}
+                       'OPEX_pr_bbl':  OPEX_GDX, 'production': prod_GDX, 'CAPEX_annual': annualCapex_GDX, 'RM': RM_GDX}
 gdx = gdxpds.to_gdx(data_ready_for_GAMS, path='results.gdx')
 print('Results are saved to: results.gdx')
